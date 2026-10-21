@@ -11,7 +11,7 @@ from src.database.db import get_all_students
 
 @st.cache_resource
 def load_dlib_models():
-    detector = dlib.get_frontal_face_detecter()
+    detector = dlib.get_frontal_face_detector()
     
     sp = dlib.shape_predictor(
         face_recognition_models.pose_predictor_model_location()
@@ -25,7 +25,7 @@ def load_dlib_models():
 
 def get_face_embeddings(image_np):
     detector, sp, facerec = load_dlib_models()
-    faces = detector[image_np, 1]
+    faces = detector(image_np, 1)
     
     encodings = []
     
@@ -98,4 +98,4 @@ def predict_attendance(class_image_np):
         
         if best_match_score <= resemblance_threshold:
             detected_student[predicted_id] = True
-    return detected_student, all_students, len(encoding)
+    return detected_student, all_students, len(encodings)
