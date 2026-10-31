@@ -56,12 +56,13 @@ def get_trained_models():
     if len(X) == 0:
         return 0
     
-    clf = SVC(kernel='linear', probability=True, class_weight='balance')
+    clf = SVC(kernel='linear', probability=True, class_weight='balanced')
     
     try:
         clf.fit(X, y)
-    except ValueError:
-        pass
+    except ValueError as e:
+        print(f"Classifier training failed: {e}", flush=True)
+        return None
     return {'clf':clf, 'X':X, 'y':y}
 
 def train_classifier():
@@ -69,33 +70,66 @@ def train_classifier():
     model_data = get_trained_models()
     return bool(model_data)
 
+
 def predict_attendance(class_image_np):
+    # Detect faces and extract their embeddings first.
     encodings = get_face_embeddings(class_image_np)
-    
+    num_faces = len(encodings)
+
     detected_student = {}
-    
+
+    # No face was detected by Dlib.
+    if num_faces == 0:
+        return {}, [], 0
+
+    # Load the student recognition model.
     model_data = get_trained_models()
-    if not model_data:
-        return {}, [], 0 
-    
-    clf = model_data['clf']
-    X_train = model_data['X']
-    y_train = model_data['y']
-    
-    all_students = sorted(list(set(y_train)))
-    
+
+    # Faces exist even if no student model is available.
+    if not isinstance(model_data, dict):
+        return {}, [], num_faces
+
+    clf = model_data["clf"]
+    X_train = model_data["X"]
+    y_train = model_data["y"]
+
+    all_students = list(dict.fromkeys(y_train))
+
+    if not X_train or not all_students:
+        return {}, [], num_faces
+
     for encoding in encodings:
-        if len(all_students) >= 2:
-            predicted_id= int(clf.predict([encoding])[0])
-        else:
-            predicted_id = int(all_students[0])
-            
-        student_embedding = X_train[y_train.index(predicted_id)]
-        
-        best_match_score = np.linalg.norm(student_embedding - encoding)
-        
-        resemblance_threshold = 0.6
-        
-        if best_match_score <= resemblance_threshold:
-            detected_student[predicted_id] = True
-    return detected_student, all_students, len(encodings)
+        # Find the closest stored embedding across all students.
+        distances = [
+            np.linalg.norm(stored_embedding - encoding)
+            for stored_embedding in X_train
+        ]
+
+        best_index = int(np.argmin(distances))
+        best_match_score = distances[best_index]
+        closest_student_id = y_train[best_index]
+
+        # Use the closest embedding as the match candidate.
+        if best_match_score <= 0.6:
+            if len(all_students) >= 2:
+                predicted_id = clf.predict([encoding])[0]
+
+                # Verify that the SVM prediction also has
+                # a sufficiently close stored face embedding.
+                predicted_indices = [
+                    i for i, sid in enumerate(y_train)
+                    if sid == predicted_id
+                ]
+
+                if predicted_indices:
+                    predicted_distance = min(
+                        np.linalg.norm(X_train[i] - encoding)
+                        for i in predicted_indices
+                    )
+
+                    if predicted_distance <= 0.6:
+                        detected_student[predicted_id] = True
+            else:
+                detected_student[closest_student_id] = True
+
+    return detected_student, all_students, num_faces
