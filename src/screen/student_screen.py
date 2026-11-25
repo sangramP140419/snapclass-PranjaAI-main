@@ -97,10 +97,28 @@ def student_screen():
     st.header("Login using FaceID", text_alignment="center")
     st.space(2)
     show_registration = False
-    photo_source = st.camera_input("Position Your Head in Center")
+    # photo_source = st.camera_input("Position Your Head in Center")
     # photo_source = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
     
+    if 'photo_tab' not in st.session_state:
+            st.session_state.photo_tab = 'camera'
+            
+    t1, t2 = st.columns(2)
     
+    with t1:
+        type_camera = "primary" if st.session_state.photo_tab == 'camera' else "tertiary"
+        if st.button("Capture Photo", type=type_camera, width="stretch"):
+            st.session_state.photo_tab = 'camera'
+    with t2:
+        type_upload = "primary" if st.session_state.photo_tab == 'upload' else "tertiary"
+        if st.button("Upload Photo", type=type_upload, width="stretch"):
+            st.session_state.photo_tab = 'upload'
+            
+    if st.session_state.photo_tab == 'camera':
+        photo_source = st.camera_input("Position Your Head in Center")
+    if st.session_state.photo_tab == 'upload':
+        photo_source = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+        
     if photo_source:
         img = np.ascontiguousarray(
             np.array(Image.open(photo_source).convert("RGB"))
