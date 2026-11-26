@@ -13,10 +13,6 @@ scikit-learn
 
 # Face Recognition
 dlib-bin
-<<<<<<< HEAD
-face-recognition
-=======
->>>>>>> 6a02baa361f12634bb8520417afa81f5e55b8956
 git+https://github.com/ageitgey/face_recognition_models.git
 
 # Database and Authentication
