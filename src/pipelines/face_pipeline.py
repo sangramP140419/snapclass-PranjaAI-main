@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import dlib
 import face_recognition_models
